@@ -12,6 +12,16 @@ def read_world(filename: str) -> List[List]:
 
 
 def value_iteration(world: List[List], costs: Dict, goal: Tuple, rewards: int, actions: List, gamma: float) -> Dict:
+    v_s = np.zeros(goal)
+    t = 0
+    q_left = []
+    q_right = []
+    q_up = []
+    q_down = []
+    while epsilon > 0.01:
+        for state in world:
+            for act in actions:
+
     pass
 
 
