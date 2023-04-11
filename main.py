@@ -15,38 +15,57 @@ def read_world(filename: str) -> List[List]:
 def value_iteration(world: List[List], costs: Dict, goal: Tuple, rewards: int, actions: List, gamma: float) -> Dict:
     rows = len(world)
     cols = len(world[0])
-    v_s = np.zeros((rows, cols))
+    v_s = np.zeros((rows+1, cols+1))
     t = 0
     q = np.zeros((len(actions), rows, cols))
-    epsilon = 1
-    # q_left = np.zeros(len(goal[0]-1), len(goal))
-    # q_right = np.zeros(len(goal[0]-1), len(goal))
-    # q_up = np.zeros(len(goal[0]-1), len(goal))
-    # q_down = np.zeros(len(goal[0]-1), len(goal))
     policy = {}
-    while epsilon > 0.01:
+    epoch = True
+    while epoch:
         v_last = deepcopy(v_s)
         t += 1
         for x in range(rows):
             for y in range(cols):
-                if (x, y) == goal: reward = 100
-                else: reward = 0
+                if (x, y) == goal: reward = rewards
+                elif world[x][y] not in costs.keys():
+                    policy.update({(x,y): (0,0)})
+                    continue
+                else: reward = costs[world[x][y]]
                 for a in range(len(actions)):
                     if a == 0:
-                        temp = costs[world[x][y]]
-                        q[a,x,y] = reward + gamma * (0.7 * costs[world[x][(y-1)]] + 0.1*costs[world[(x+1)][y]] + 0.1*costs[world[x][(y+1)]] + 0.1*costs[world[(x-1)][y]])
+                        q[a,x,y] = reward + gamma * (0.7 * v_s[x][y-1] + 0.1*v_s[(x+1)][y] + 0.1*v_s[x][(y+1)] + 0.1*v_s[(x-1)][y])
                     elif a == 1:
-                        q[a,x,y] = reward + gamma * (0.7 * costs[world[x+1][y]] + 0.1*costs[world[x][y+1]] + 0.1*costs[world[x-1][y]] + 0.1*costs[world[x][y-1]])
+                        q[a,x,y] = reward + gamma * (0.7 * v_s[x+1][y] + 0.1*v_s[x][y+1] + 0.1*v_s[x-1][y] + 0.1*v_s[x][y-1])
                     elif a == 2:
-                        q[a,x,y] = reward + gamma * (0.7 * costs[world[x][y+1]] + 0.1*costs[world[x-1][y]] + 0.1*costs[world[x][y-1]] + 0.1*costs[world[x+1][y]])
+                        q[a,x,y] = reward + gamma * (0.7 * v_s[x][y+1] + 0.1*v_s[x-1][y] + 0.1*v_s[x][y-1] + 0.1*v_s[x+1][y])
                     else:
-                        q[a,x,y] = reward + gamma * (0.7 * costs[world[x-1][y]] + 0.1*costs[world[x][y-1]] + 0.1*costs[world[x+1][y]] + 0.1*costs[world[x][y+1]])
-                direction = q.argmax(2)
-                policy.update({(x,y): '<'})
-                v_s[x,y] = q[:][x][y].max()
-        epsilon = abs(v_s - v_last)
+                        q[a,x,y] = reward + gamma * (0.7 * v_s[x-1][y] + 0.1*v_s[x][y-1] + 0.1*v_s[x+1][y] + 0.1*v_s[x][y+1])
+                direction = q[:,x,y].argmax(0)
+                if direction == 0:
+                    policy.update({(x,y): actions[0]})
+                elif direction == 1:
+                    policy.update({(x, y): actions[1]})
+                elif direction == 2:
+                    policy.update({(x, y): actions[2]})
+                else:
+                    policy.update({(x, y): actions[3]})
+                v_s[x,y] = q[:,x,y].max(0)
+        epsilon = abs(np.subtract(v_s, v_last))
+        if np.all(epsilon < 0.01): epoch = False
     return policy
 
+
+def pretty_print_policy(cols: int, rows: int, policy: Dict, goal: Tuple):
+    row = []
+    for key, values in policy.items():
+        if key == goal: row.append('G')
+        elif values == (0,-1): row.append('<')
+        elif values == (1,0): row.append('V')
+        elif values == (0,1): row.append('>')
+        elif values == (0,0): row.append('X')
+        else: row.append('^')
+        if key[1] == cols-1:
+            print(''.join(row))
+            row = []
 
 if __name__ == "__main__":
     small_world = read_world('small.txt')
@@ -55,7 +74,15 @@ if __name__ == "__main__":
     gamma = 0.9
     cardinal_moves = [(0, -1), (1, 0), (0, 1), (-1, 0)]
     reward = 100
-    goal = (len(small_world[0]) - 1, len(small_world) - 1)
+    goal = (len(small_world) - 1, len(small_world[0]) - 1)
 
+    cols = len(small_world[0])
+    rows = len(small_world)
     small_policy = value_iteration(small_world, costs, goal, reward, cardinal_moves, gamma)
-    print(small_policy)
+    pretty_print_policy(cols, rows, small_policy, goal)
+
+    cols = len(large_world[0])
+    rows = len(large_world)
+    goal = (len(large_world)-1, len(large_world[0])-1)
+    large_policy = value_iteration(large_world, costs, goal, reward, cardinal_moves, gamma)
+    pretty_print_policy(cols, rows, large_policy, goal)
